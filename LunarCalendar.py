@@ -1,10 +1,11 @@
 import math
+from math import pi, atan, sqrt, sin, cos
 
 
 class LunarCalendar:
     zwz = True
-    ctg = ('甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸')
-    cdz = ('子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥')
+    ctg = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
+    cdz = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
     jq = ['春分', '清明', '谷雨', '立夏', '小满', '芒种', '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降', '立冬', '小雪', '大雪',
           '冬至', '小寒', '大寒', '立春', '雨水', '惊蛰']
     synmonth = 29.530588853
@@ -158,7 +159,7 @@ class LunarCalendar:
                 continue
             if k > 4:
                 continue
-            if k % 2 == 1:
+            if k % 2 == 0:
                 continue
             jdpjq.append(dj[k])
 
@@ -328,7 +329,7 @@ class LunarCalendar:
             jdnm.append(tjd[j - 1 + k])
         return jdnm
 
-    def Solar2Julian(self, yy: int, mm: int, dd: int, hh: int = 0, mt: int = 0, ss: int = 0):
+    def Solar2Julian(self, yy: int, mm: int, dd: int, hh: int, mt: int, ss: int):
         if not self.ValidDate(yy, mm, dd):
             return False
 
@@ -339,19 +340,19 @@ class LunarCalendar:
         if ss < 0 or ss >= 60:
             return False
 
-        yp = yy + math.floor((mm - 3) / 10)
+        yp = yy + ((mm - 3) // 10)
 
         if (yy > 1582) or (yy == 1582 and mm > 10) or (yy == 1582 and mm == 10 and dd >= 15):
             init = 1721119.5
-            jdy = math.floor(yp * 365.25) - math.floor(yp / 100) + math.floor(yp / 400)
+            jdy = yp * 365.25 - (yp // 100) + (yp // 400)
         elif (yy < 1582) or (yy == 1582 and mm < 10) or (yy == 1582 and mm == 10 and dd <= 4):
             init = 1721117.5
             jdy = yp * 365.25
         else:
             return False
 
-        mp = math.floor(mm + 9) % 12
-        jdm = mp * 30 + math.floor((mp + 1) * 34 / 57)
+        mp = (mm + 9) % 12
+        jdm = mp * 30 + ((mp + 1) * 34 // 57)
         jdd = dd - 1
         jdh = (hh + (mt + (ss / 60)) / 60) / 24
         return jdy + jdm + jdd + jdh + init
@@ -524,7 +525,7 @@ class LunarCalendar:
 
         dj = self.GetAdjustedJQ(yy - 1, 21, 23)
         for k, v in enumerate(dj):
-            if k < 0 or k > 3:
+            if k < 21 or k > 23:
                 continue
             jq.append(self.Julian2Solar(v))
 
@@ -536,7 +537,7 @@ class LunarCalendar:
 
     def GetGanZhi(self, yy: int, mm: int, dd: int, hh: int, mt: int = 0, ss: int = 0) -> list:
         jd = self.Solar2Julian(yy, mm, dd, hh, mt, max(1, ss))
-
+        print(jd)
         if jd is None:
             return []
 
@@ -621,10 +622,99 @@ class LunarCalendar:
         for i in range(4):
             ret['bazi'] += self.ctg[tg[i]]
             ret['bazi'] += self.cdz[dz[i]]
-            if i < 3:
-                ret['bazi'] += ' '
 
         for i in range(12):
+            ret['big'] += self.ctg[big_tg[i]]
+            ret['big'] += self.cdz[big_dz[i]]
             ret['big_start_time'].append(self.Julian2Solar(start_jdtime + i * 10 * 360))
+
+        j, t, d = 0, (tg[1] + 1) % 10, (dz[1] + 1) % 12
+        while True:
+            if (yy + j) < ret['start_time'][0]:
+                j += 1
+                continue
+            if j >= 120:
+                break
+
+            ret['years'] += self.ctg[t]
+            ret['years'] += self.cdz[d]
+            if j % 10 == 0:
+                ret['years'] += "\n"
+
+            j += 1
+            t = (t + 1) % 10
+            d = (d + 1) % 12
+
+        return ret
+
+    def GetMonthsFromYear(self, ySN: int):
+        ret = []
+        nv = 2 + 12 * (ySN % 10)
+
+        for i in range(12):
+            pv = (i + nv) % 60
+            ret.append(pv)
+
+        return ret
+
+    def GetHoursFromDay(self, dSN: int):
+        ret = []
+        nv = 2 + 12 * (dSN % 10)
+
+        for i in range(12):
+            pv = (i + nv) % 60
+            ret.append(pv)
+
+        return ret
+
+    def ReverseBazi(self, ygz: int, mgz: int, dgz: int, hgz: int, yeai: int, mx: int):
+        ret = []
+
+        if ygz < 0 or ygz >= 60 or mgz < 0 or mgz >= 60 or dgz < 0 or dgz >= 60 or hgz < 0 or hgz >= 60:
+            return ret
+
+        if mgz not in self.GetMonthsFromYear(ygz):
+            return ret
+
+        if hgz not in self.GetHoursFromDay(dgz):
+            return ret
+
+        yeaf = yeai + mx * 60
+
+        if yeai < -1000 or yeaf > 3000:
+            return ret
+
+        for m in (0, mx-1):
+            yea = yeai + m * 60
+            syc = (yea + 56) % 60
+            asyc = (ygz + 60 - syc) % 60
+            iy = yea + asyc
+            jdpjq = self.GetPureJQsinceSpring(iy)
+            mgzo = (mgz + 60 - 2) % 12
+            ijd = jdpjq[mgzo]
+            fjd = jdpjq[mgzo + 1]
+            sdc = (math.floor(ijd) + 49) % 60
+            asdc = (dgz + 60 - sdc) % 60
+            idd = math.floor(ijd + asdc)
+            ihh = hgz % 12
+            id = idd + (ihh * 2 - 13) / 24
+            fd = idd + (ihh * 2 - 11) / 24
+
+            if fd < ijd or id > fjd:
+                continue
+            else:
+                if id > ijd and fd < fjd:
+                    ids = id
+                    fds = fd
+
+                if id < ijd and fd > ijd:
+                    ids = ijd
+                    fds = fd
+
+                if id < fjd and fd > fjd:
+                    ids = id
+                    fds = fjd
+
+                ret.append([self.Julian2Solar(ids), self.Julian2Solar(fds)])
 
         return ret
