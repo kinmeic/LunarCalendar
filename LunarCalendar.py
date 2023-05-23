@@ -684,7 +684,7 @@ class LunarCalendar:
         if yeai < -1000 or yeaf > 3000:
             return ret
 
-        for m in (0, mx-1):
+        for m in range(mx):
             yea = yeai + m * 60
             syc = (yea + 56) % 60
             asyc = (ygz + 60 - syc) % 60
