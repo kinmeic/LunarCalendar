@@ -659,7 +659,7 @@ class LunarCalendar:
 
     def GetHoursFromDay(self, dSN: int):
         ret = []
-        nv = 2 + 12 * (dSN % 10)
+        nv = 12 * (dSN % 10)
 
         for i in range(12):
             pv = (i + nv) % 60
